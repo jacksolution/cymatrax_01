@@ -39,7 +39,7 @@
                 <a href="javascript:void(0)" id="myBtn">Click Here</a>, page</p>
               
             </div>
-            <div> <p>*that files will be kept for {{ $val}} days  </p>  </div>
+            <div> <p> * All files will be kept for {{ $val}} days  </p>  </div>
         </div>
     </section>
 
