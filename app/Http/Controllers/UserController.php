@@ -18,6 +18,7 @@ use Omnipay\Common\CreditCard;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use ZipArchive;
+use App\Settings;
 
 class UserController extends Controller
 {
@@ -50,9 +51,11 @@ class UserController extends Controller
 //        $outName1 = $dir."Ashnikko-DaisyLyrics.wav";
 //        $res = shell_exec("lame --quiet --decode  $inName  $outName1  2>&1;");
 //        dd($res);
+        $select =  DB::table('settings')->select('value')->where('id',1)->first();
+        $val = $select->value;
 
         $title = "Upload Audio";
-        return view('upload', compact('title'));
+        return view('upload', compact('title','val'));
     }
 
     public function profile()
@@ -371,4 +374,24 @@ class UserController extends Controller
             return redirect(url('/account'))->with('error', 'File not found');
         }
     }
+
+    public function time_on_disk(){
+
+        $title = "Time On Disk";
+        $settings = DB::table("settings")->first();
+        return view('seetings', ["title" => $title, "settings" => $settings]);
+
+    }
+    public function time_on_disk_save(Request $request){
+
+        DB::table('settings')
+            ->where('id', 1)
+            ->update([
+            'key' => $request->key,
+            'value' => $request->value]);
+
+        return redirect(url('/time-on-disk'))->with('message', 'Sucessfully updated!');
+
+    }
+
 }

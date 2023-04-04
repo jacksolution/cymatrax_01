@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\UserSubscription;
-use Carbon\Carbon;
 
 class RemoveFilesCron extends Command
 {
@@ -40,12 +39,12 @@ class RemoveFilesCron extends Command
     public function handle()
     {
         
-       // unlink(public_path('upload/1680544308_file_example_MP3_1MG.mp3'));
-        $remove = \DB::table('uploads')->Where( 'created_at', '<', Carbon::now()->subDays(15))->pluck('file_name');
-        foreach($remove as $val){
-            $delete = "upload/".$val;
-            unlink(public_path($delete));
-        }
+        unlink(public_path('upload/1680544308_file_example_MP3_1MG.mp3'));
+        // $remove = DB::table('uploads')->Where( 'created_at', '<', Carbon::now()->subDays(15))->pluck('file_name');
+        // foreach($remove as $val){
+        //     $delete = "upload/".$val;
+        //     unlink(public_path($delete));
+        // }
 
          \Log::info("Cron is working fine!");
 

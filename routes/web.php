@@ -25,6 +25,8 @@ Route::get('/privacy', 'HomeController@privacy');
 Route::get('/terms', 'HomeController@terms');
 Route::get('/dashboard', 'UserController@index');
 Route::get('/upload-audio', 'UserController@upload_audio');
+Route::get('/time-on-disk', 'UserController@time_on_disk');
+Route::post('/time-on-disk-save', 'UserController@time_on_disk_save')->name("time-on-disk-save");
 Route::get('/profile', 'UserController@profile');
 Route::post('/update-profile', 'UserController@update_profile')->name("update-profile");
 Route::post('file/upload', 'UserController@upload')->name('file.upload');

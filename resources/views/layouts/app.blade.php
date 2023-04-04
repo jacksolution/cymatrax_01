@@ -58,6 +58,7 @@
             @if(Auth::user())
                 <li><a href="{{URL::to('/')}}/dashboard">Dashboard</a></li>
                 <li><a href="{{URL::to('/')}}/upload-audio/">Upload Audio</a></li>
+                <li><a href="{{URL::to('/')}}/time-on-disk/">Time On Disk</a></li>
                 <li><a href="{{URL::to('/')}}/account">My Account</a></li>
                 <li><a href="{{URL::to('/')}}/transactions/">Transactions</a></li>
                 <li><a href="{{URL::to('/')}}/services/">Services</a></li>
