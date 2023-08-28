@@ -3,7 +3,10 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\UserSubscription;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\File;
 
 class RemoveFilesCron extends Command
 {
@@ -38,15 +41,24 @@ class RemoveFilesCron extends Command
      */
     public function handle()
     {
-        
-        unlink(public_path('upload/1680544308_file_example_MP3_1MG.mp3'));
-        // $remove = DB::table('uploads')->Where( 'created_at', '<', Carbon::now()->subDays(15))->pluck('file_name');
-        // foreach($remove as $val){
-        //     $delete = "upload/".$val;
-        //     unlink(public_path($delete));
+        // $file = public_path('upload/1680544308_file_example_MP3_1MG.mp3');
+
+        // if (File::exists($file)) {
+        //     File::delete($file);
         // }
-
-         \Log::info("Cron is working fine!");
-
+            echo "11111"; exit;
+        $file_days = DB::table('constant_settings')->where('id',2)->first();
+        if(!empty($file_days)) {
+            $remove = DB::table('uploads')->Where('created_at', '<', Carbon::now()->subDays($file_days->value))->get(['id','file_name']);
+            foreach($remove as $val){
+                Log::channel('deleted_file_info')->info($val->file_name.' file is permanently deleted');
+                $delete = "upload/".$val->file_name;
+                $delete = public_path("upload/".$val->file_name);
+                if (File::exists($delete)) {
+                    File::delete($delete);
+                }
+                DB::table('uploads')->where('id', $val->id)->delete();
+            }
+        }
     }
 }

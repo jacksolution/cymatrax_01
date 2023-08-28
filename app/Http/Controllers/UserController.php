@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\FileDeleteSetting;
 use App\FreeSubscription;
 use App\UserCard;
 use App\User;
@@ -19,6 +20,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use ZipArchive;
 use App\Settings;
+use App\ConstantSettings;
+
 
 class UserController extends Controller
 {
@@ -40,22 +43,58 @@ class UserController extends Controller
     public function index()
     {
         $title = "Dashboard";
+        $subscriptions = DB::table('subscription_type')->get();
+        $free_clean_files = DB::table('constant_settings')->where('id',3)->first();
+        $uploads =  DB::table('uploads')->where('user_id', Auth::user()->id)->groupBy('user_id')
+            ->selectRaw('sum(duration_in_sec) as duration, count(*) as count, user_id')->get();
 
-        return view('home', compact('title'));
+        return view('home', compact('title', 'uploads', 'subscriptions', 'free_clean_files'));
     }
 
     public function upload_audio()
     {
-//        $dir = "public/upload/";
-//        $inName = $dir."Ashnikko-DaisyLyrics.mp3";
-//        $outName1 = $dir."Ashnikko-DaisyLyrics.wav";
-//        $res = shell_exec("lame --quiet --decode  $inName  $outName1  2>&1;");
-//        dd($res);
-        $select =  DB::table('settings')->select('value')->where('id',1)->first();
-        $val = $select->value;
+        //        $dir = "public/upload/";
+        //        $inName = $dir."Ashnikko-DaisyLyrics.mp3";
+        //        $outName1 = $dir."Ashnikko-DaisyLyrics.wav";
+        //        $res = shell_exec("lame --quiet --decode  $inName  $outName1  2>&1;");
+        //        dd($res);
 
+        $upload_limits = 'Unlimited';
+        $user_limits = null;
+        $maxlimit = Auth::user()->no_of_clean_file;
+        $uploads = 0;
+        if(Auth::user()->subscription == 0 && is_null(Auth::user()->trial_expiry_date)){
+
+            $clean_files = DB::table('constant_settings')->select('value')->where('id', 3)->first();
+            $upload_limits = $clean_files->value;
+            $user_limits = Upload::where('user_id', Auth::user()->id)->count();
+
+            $upload_limits = (int)$upload_limits + (int)$user_limits;
+
+            // if(($user_limits + $count) > $upload_limits){
+            //     return redirect()->back()->with('failed', 'You can not further process');
+            // }
+        }
+        if(Auth::user()->subscription == 1 && is_null(Auth::user()->trial_expiry_date)){
+
+            $clean_files = DB::table('constant_settings')->select('value')->where('id', 3)->first();
+            $upload_limits = $clean_files->value;
+            $user_limits = Upload::where('user_id', Auth::user()->id)->count();
+
+            $upload_limits = (int)$upload_limits + (int)$user_limits;
+            $uploads =  DB::table('uploads')->where('user_id', Auth::user()->id)->groupBy('user_id')
+            ->selectRaw('count(*) as count')->get();
+            // if(($user_limits + $count) > $upload_limits){
+            //     return redirect()->back()->with('failed', 'You can not further process');
+            // }
+        }
+
+        $select =  DB::table('constant_settings')->select('value')->where('id', 4)->first();
+        $val = $select->value;
         $title = "Upload Audio";
-        return view('upload', compact('title','val'));
+
+
+        return view('upload', compact('title', 'val', 'upload_limits','maxlimit','uploads'));
     }
 
     public function profile()
@@ -78,13 +117,24 @@ class UserController extends Controller
         $user->zip_code = $request->zipcode ? $request->zipcode : $user->zip_code;
         $user->save();
 
-        return Redirect::to('/profile')->with('alert', 'Profile Updated Successfully');
-
+        return redirect()->back()->with('message', 'Profile Updated Successfully');
     }
 
     public function upload(Request $request)
     {
         $count = count($request->file);
+
+        // $upload_limits = 'Unlimited';
+        // if(Auth::user()->subscription == 0 && is_null(Auth::user()->trial_expiry_date)){
+        //     $upload_limits = FileDeleteSetting::value('clean_files_limits');
+        //     $user_limits = Upload::where('user_id', Auth::user()->id)->count();
+        //     $upload_limits = (int)$upload_limits + (int)$user_limits;
+        //     // if(($user_limits + $count) > $upload_limits){
+        //     //     return redirect()->back()->with('failed', 'You can not further process');
+        //     // }
+        // }
+
+        // return 123123;
         foreach ($request->file as $item) {
             $img = $item->getClientOriginalName();
             $img = preg_replace("/[^a-z0-9\_\-\.]/i", '', $img);
@@ -96,6 +146,7 @@ class UserController extends Controller
             $data->file_name = $imageName;
             $data->save();
             Cache::flush();
+
 
         }
         return response()->json(['success' => $imageName, 'count' => $count]);
@@ -161,40 +212,137 @@ class UserController extends Controller
 
             //$data = array('message'=>"Hi, user");
             Mail::raw('Hi, user', function ($message) {
-                $message->to('neelesh@manifestinfotech.com', env('APP_NAME'))->subject
-                ('Weekly New Registered Users');
+                $message->to('neelesh@manifestinfotech.com', env('APP_NAME'))->subject('Weekly New Registered Users');
                 $message->from(env('MAIL_FROM_ADDRESS'), env('APP_NAME'));
                 $message->attach(storage_path('users.csv'));
             });
             echo "Email Sent";
-
         } else {
             //$data = array('message'=>"Users not registered this week");
             Mail::raw('Hi, Users not registered this week', function ($message) {
-                $message->to('neelesh@manifestinfotech.com', env('APP_NAME'))->subject
-                ('Weekly New Registered Users');
+                $message->to('neelesh@manifestinfotech.com', env('APP_NAME'))->subject('Weekly New Registered Users');
                 $message->from(env('MAIL_FROM_ADDRESS'), env('APP_NAME'));
             });
             echo "Email Sent";
         }
-
-
     }
 
     public function account()
     {
         $title = "My Account";
         $getData = DB::table('uploads')->where('user_id', '=', auth()->user()->id)->orderBy('created_at', 'desc')->get();
-        return view('account', compact('getData', 'title'));
+        foreach ($getData as $key => $upload) {
+            $seconds = $upload->duration;
+            $minutes = floor($seconds / 60);
+            $secondsleft = $seconds % 60;
+            if ($minutes < 10) {
+                $minutes = '0' . $minutes;
+            }
+            if ($secondsleft < 10) {
+                $secondsleft = '0' . $secondsleft;
+            }
+            $upload->duration = $minutes . ':' . $secondsleft;
+            $upload->duration_in_min = $minutes . ':' . $secondsleft;
+        }
+        $expire_trial_subs = Auth::user()->trial_expiry_date;
+        $remaining_file_limits = "'Default'";
+        // if(is_null($expire_trial_subs) && Auth::user()->subscription == 0){
+        //     $file_limits = FileDeleteSetting::value('clean_files_limits');
+        //     $user_limits = Upload::where('user_id', Auth::user()->id)->count();
+        //     // return $user_limits;
+        //     $remaining_file_limits = $file_limits - $user_limits;
+        //     }
+        // return $remaining_file_limits;
+        $user_limits = Upload::where('user_id', Auth::user()->id)->where('cleaned', 1)->count();
+        if (Auth::user()->subscription ==  1) {
+            $file_limits = DB::table('subscription_type')->where('plan_id', Auth::user()->plan_id)->value('no_of_clean_file');
+            if ($file_limits == 'Unlimited') {
+                $remaining_file_limits = "'Unlimited'";
+            } else {
+                $remaining_file_limits = $file_limits - $user_limits;
+                $remaining_file_limits = $remaining_file_limits <= 0 ? 0 : $remaining_file_limits;
+            }
+        }else if (is_null(Auth::user()->trial_expiry_date)){
+            $clean_files = DB::table('constant_settings')->select('value')->where('id', 3)->first();
+            $file_limits = $clean_files->value;
+            $remaining_file_limits = $file_limits - $user_limits;
+                $remaining_file_limits = $remaining_file_limits <= 0 ? 0 : $remaining_file_limits;
+        }
+        return view('account', compact('getData', 'title', 'remaining_file_limits'));
     }
 
     public function upload_summary($id)
     {
         $title = "Upload Summary";
         $getData = Upload::where('user_id', '=', auth()->user()->id)->orderBy('created_at', 'desc')->take($id)->get();
-        return view('upload-summary', compact('title', 'getData', 'id'));
+
+        $expire_trial_subs = Auth::user()->trial_expiry_date;
+        $remaining_file_limits = "'Default'";
+
+        $user_limits = Upload::where('user_id', Auth::user()->id)->where('cleaned', 1)->count();
+        if (Auth::user()->subscription ==  1) {
+            // $file_limits = DB::table('subscription_type')->where('plan_id', Auth::user()->plan_id)->value('no_of_clean_file');
+            // if ($file_limits == 'Unlimited') {
+            //     $remaining_file_limits = "'Unlimited'";
+            // } else {
+            //     $remaining_file_limits = $file_limits - $user_limits;
+            //     $remaining_file_limits = $remaining_file_limits <= 0 ? 0 : $remaining_file_limits;
+            // }
+
+            $user_limits = Upload::where('user_id', Auth::user()->id)->where('cleaned', 1)->count();
+            $maxlimit = Auth::user()->no_of_clean_file;
+
+            $remaining_file_limits = ($maxlimit - $user_limits);
+
+        }else if (is_null(Auth::user()->trial_expiry_date)){
+            // $file_limits = FileDeleteSetting::value('clean_files_limits');
+            // $remaining_file_limits = $file_limits - $user_limits;
+
+               // $remaining_file_limits = $remaining_file_limits <= 0 ? 0 : $remaining_file_limits;
+               $user_limits = Upload::where('user_id', Auth::user()->id)->where('cleaned', 1)->count();
+               $maxlimit = Auth::user()->no_of_clean_file;
+
+               $remaining_file_limits = ($maxlimit - $user_limits);
+
+        }
+
+
+
+        return view('upload-summary', compact('title', 'getData', 'id', 'remaining_file_limits'));
+    }
+
+    public function redirectToPayment(Request $request){
+        $postData = $request->all();
+        $charge = $postData['charge'];
+
+        // Store the data in the session
+        session(['postData' => $postData]);
+
+
+         return true;
 
     }
+
+
+    public function redirectToPayInfo(){
+
+        $postData = session('postData');
+        if ($postData) {
+            // Clear the data from the session
+            session()->forget('postData');
+
+            // Pass the data to the view
+            return view('payments.payinfo', compact('postData'));
+        }
+
+       // return view('payments.payinfo', compact('charge'));
+    }
+
+    // public function redirectToPayInfo(Request $request){
+
+    //     $postData = $request->all();
+    //     return view('payments.payinfo', compact('postData'));
+    // }
 
     public function transaction_details($id)
     {
@@ -202,7 +350,6 @@ class UserController extends Controller
         $getData = Upload::where('paymentdetails_id', '=', $id)->get();
 
         return view('transaction-details', compact('title', 'getData'));
-
     }
 
     public function transactions()
@@ -240,13 +387,12 @@ class UserController extends Controller
             $psize = convertToReadableSize(filesize(public_path() . '/upload/' . $file->processed_file));
         }
         return view('audio-analysis', compact('title', 'file', 'size', 'psize'));
-
     }
 
     public function download_file($file)
     {
         $file = public_path() . '/upload/' . $file;
-//        $file = asset('public/upload/').'/'.$file;
+        //        $file = asset('public/upload/').'/'.$file;
         return response()->download($file, 'file.mp3');
     }
 
@@ -264,7 +410,6 @@ class UserController extends Controller
 
 
         return view('propaypal', compact('getData', 'audioids'));
-
     }
 
     public function getUploadedAudio($id)
@@ -273,14 +418,12 @@ class UserController extends Controller
             ->where('user_id', '=', auth()->user()->id)
             ->orderBy('created_at', 'desc')->take($id)->get();
         return response()->json(['status' => 'success', 'res' => $getData], 200);
-
     }
 
     public function getAudio($id)
     {
         $getData = Upload::find($id);
         return response()->json(['status' => 'success', 'res' => $getData], 200);
-
     }
 
     public function getTransactionAudio($id)
@@ -305,7 +448,6 @@ class UserController extends Controller
 
         $getData = $query->get();
         return response()->json(['status' => 'success', 'res' => $getData], 200);
-
     }
 
     public function free_subscription()
@@ -318,7 +460,8 @@ class UserController extends Controller
     {
         $user = User::find(Auth::user()->id);
         if (!$user->trial_expiry_date) {
-            $days = FreeSubscription::first()->days;
+            $days = ConstantSettings::where('id',1)->first();
+            $days = $days->value;
             $trial_expiry_date = strtotime("+$days days ", time());
             $user->trial_expiry_date = $trial_expiry_date;
             $user->save();
@@ -338,7 +481,6 @@ class UserController extends Controller
             $up->save();
         }
         return response()->json(['status' => 'success'], 200);
-
     }
 
     public function download(Request $request)
@@ -348,8 +490,8 @@ class UserController extends Controller
         $zipFileName = 'all-files.zip';
 
         $zip = new ZipArchive;
-        if(file_exists($public_dir.'/download/'.$zipFileName)){
-            unlink($public_dir.'/download/'.$zipFileName);
+        if (file_exists($public_dir . '/download/' . $zipFileName)) {
+            unlink($public_dir . '/download/' . $zipFileName);
         }
 
         if ($zip->open($public_dir . '/download/' . $zipFileName, ZipArchive::CREATE) === TRUE) {
@@ -375,23 +517,11 @@ class UserController extends Controller
         }
     }
 
-    public function time_on_disk(){
-
-        $title = "Time On Disk";
-        $settings = DB::table("settings")->first();
-        return view('seetings', ["title" => $title, "settings" => $settings]);
-
+    public function subscription()
+    {
+        $title = "Select Subscription";
+        $subscriptions = DB::table('subscription_type')->get();
+        $free_clean_files = DB::table('constant_settings')->where('id',3)->first();
+        return view("subscription", compact("title", "subscriptions", "free_clean_files"));
     }
-    public function time_on_disk_save(Request $request){
-
-        DB::table('settings')
-            ->where('id', 1)
-            ->update([
-            'key' => $request->key,
-            'value' => $request->value]);
-
-        return redirect(url('/time-on-disk'))->with('message', 'Sucessfully updated!');
-
-    }
-
 }

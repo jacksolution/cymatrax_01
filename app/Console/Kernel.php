@@ -24,8 +24,15 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+       
+
         // $schedule->command('inspire')->hourly();
         $schedule->command('remove:cron')->everyMinute();
+        $schedule->command('plan:cancel_plan')->everyMinute();
+        $schedule->command('countrynotus:cron')->everyMinute();
+        // $schedule->call(function () {
+        //     Artisan::call('plan:cancel_plan');
+        // })->dailyAt('22:23');
 
     }
 

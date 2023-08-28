@@ -23,7 +23,7 @@
     </script>
 
 <style>
-    #overlay{
+    /* #overlay{
         position:fixed;
         z-index:99999;
         top:0;
@@ -35,9 +35,9 @@
     }
     #overlay > img{
         position: absolute;
-        top: 35%;
-        left: 45%;
-    }
+        top: 50%;
+        left: 50%;
+    } */
 </style>
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-QGRTB9YSNS"></script>
@@ -58,7 +58,6 @@
             @if(Auth::user())
                 <li><a href="{{URL::to('/')}}/dashboard">Dashboard</a></li>
                 <li><a href="{{URL::to('/')}}/upload-audio/">Upload Audio</a></li>
-                <li><a href="{{URL::to('/')}}/time-on-disk/">Time On Disk</a></li>
                 <li><a href="{{URL::to('/')}}/account">My Account</a></li>
                 <li><a href="{{URL::to('/')}}/transactions/">Transactions</a></li>
                 <li><a href="{{URL::to('/')}}/services/">Services</a></li>
@@ -84,15 +83,17 @@
                 <li><a href="{{URL::to('/')}}">Home</a></li>
                 <li><a href="{{URL::to('/')}}/services/">Services</a></li>
                 <li><a href="{{URL::to('/')}}/login">Login</a></li>
+                <li><a href="{{URL::to('/')}}/register">Sign Up Free</a></li>
             @endif
         </ul>
     </div>
 </header>
 
 <div id="app">
-    <div id="overlay" class="d-none">
-        <img src="{{asset('assets/images/loader.gif')}}" alt="Loading" />
-    </div>
+     <!-- /* loader is temp display:none  -->
+    <!-- <div id="overlay" class="d-none">
+        <img src="{{asset('assets/images/loader.gif')}}" alt="Loading" style="height:30px;width:30px" />
+    </div> -->
     @yield('content')
 </div>
 <footer>
@@ -206,7 +207,7 @@
         // FADE OUT YOUR OVERLAYING DIV
         setTimeout(function () {
             // $('#overlay').fadeOut();
-        },1600);
+        },500);
     });
 
 </script>

@@ -162,41 +162,152 @@ function checkout() {
     });
 }
 
-function clean_files(id) {
-    $("#alert-info").html('<div class="alert">' +
-        'Processing Files! Please DO NOT close your browser, this may take several minutes' +
-        '</div>');
-    $("#clean-btn").html("Loading...");
-    $("#clean-btn").prop("disabled", true);
-    $.ajax({
-        method: "get",
-        url: APP_URL + "/clean-files/" + id,
-        success: function (response) {
-            $("#alert-info").hide();
-            $("#clean-btn").html("Clean File(s)");
-            $("#clean-btn").prop("disabled", false);
-            console.log(response);
-            Swal.fire({
-                title: 'Success!',
-                text: response.msg,
-                icon: 'success',
-                showCancelButton: false,
-            }).then((result) => {
-                window.location = APP_URL + '/account';
-            })
-        },
-        error: function (error) {
+function clean_files(id, file_limits) {
+     console.log('id', id, 'limiti  ', file_limits)
+    if (file_limits == 'Default' || file_limits == 'Unlimited' || file_limits > 0) {
+        $("#alert-info").html('<div class="alert">' +
+            'Processing Files! Please DO NOT close your browser, this may take several minutes' +
+            '</div>');
+        $("#clean-btn").html("Loading...");
+        $("#clean-btn").prop("disabled", true);
+        $.ajax({
+            method: "get",
+            url: APP_URL + "/clean-files/" + id,
+            success: function (response) {
+                $("#alert-info").hide();
+                $("#clean-btn").html("Clean File(s)");
+                $("#clean-btn").prop("disabled", false);
+                console.log(response);
+                Swal.fire({
+                    title: 'Success!',
+                    text: response.msg,
+                    icon: 'success',
+                    showCancelButton: false,
+                }).then((result) => {
+                    window.location = APP_URL + '/account';
+                })
+            },
+            error: function (error) {
+                $("#clean-btn").html("Loading...");
+                $("#clean-btn").prop("disabled", true);
+                console.log(error);
+                Swal.fire({
+                    title: "Error",
+                    text: error.responseJSON.msg,
+                    icon: "error",
+                });
+            }
+        });
+    } else {
+        var chargeValue = $("#charge-value").val();
+        
+        $.ajax({
+            method: "post",
+            url: APP_URL + "/pay-via-paypal",
+            data: {
+                "_token": CSRF_TOKEN,
+                "charge": chargeValue
+            },
+            success: function (response) {
+                
+                if (response) {
+                    // Redirect to the view using JavaScript
+                    window.location.href = APP_URL +'/paymentinfo';
+                } else {
+                    // Handle errors if needed
+                }
+            }
+        });
+
+        // Swal.fire({
+        //     title: 'Are you sure?',
+        //     text: "Now you don't have limit more than " + file_limits + " files, please select a new plan or upgrade your current plan",
+        //     icon: 'warning',
+        //     showCancelButton: true,
+        //     confirmButtonColor: '#3085d6',
+        //     cancelButtonColor: '#d33',
+        //     confirmButtonText: 'Select or Upgrade Plan!'
+        // }).then((result) => {
+        //     if(result.isConfirmed){
+        //         window.location = APP_URL + '/subscription';
+        //     }
+        // })
+    }
+}
+
+function clean_multiple_files(file_limits) {
+    // window.location = '/dashboard';
+    console.log('files_remaingn', file_limits);
+    var ids = [];
+    $('input.testCheckbox[type="checkbox"]:checked').each(function () {
+        // if ($(this).attr("idd") > 0) {
+        ids.push($(this).attr("idd"));
+        // }
+    });
+    // permittedValues = ids.map(value => value.value);
+    // console.log('ids', permittedValues)
+    if (file_limits == 'Default' || file_limits == 'Unlimited' || ids.length <= file_limits) {
+        // if (ids.length > 0 && ids.length >= file_limits){
+
+
+        // }else {
+        if (ids.length > 0) {
+            $("#alert-info").append('<div class="alert">' +
+                'Processing Files! Please DO NOT close your browser, this may take several minutes' +
+                '</div>')
             $("#clean-btn").html("Loading...");
             $("#clean-btn").prop("disabled", true);
-            console.log(error);
-            Swal.fire({
-                title: "Error",
-                text: error.responseJSON.msg,
-                icon: "error",
+            $.ajax({
+                method: "post",
+                url: APP_URL + "/clean-multiple-file",
+                data: {
+                    "_token": CSRF_TOKEN,
+                    "id": ids
+                },
+                success: function (response) {
+                    $("#clean-btn").html("Clean File(s)");
+                    $("#clean-btn").prop("disabled", false);
+                    console.log(response);
+                    Swal.fire({
+                        title: 'Success!',
+                        text: response.msg,
+                        icon: 'success',
+                        showCancelButton: false,
+                    }).then((result) => {
+                        window.location = APP_URL + '/account';
+                    })
+                },
+                error: function (error) {
+                    $("#clean-btn").html("Loading...");
+                    $("#clean-btn").prop("disabled", true);
+                    console.log(error);
+                    Swal.fire({
+                        title: "Error",
+                        text: error.responseJSON.msg,
+                        icon: "error",
+                    });
+                }
             });
         }
-    });
+        // }
+    } else {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "Now you don't have limit more than " + file_limits + " files, please select a new plan or upgrade your current plan",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Select or Upgrade Plan!'
+        }).then((result) => {
+            if(result.isConfirmed){
+                window.location = APP_URL + '/subscription';
+            }
+        })
+        // $("#file-limits-modal").show();
+    }
 }
+
 
 function clean_files_with_free_trial(id) {
     $("#alert-info").html('<div class="alert">' +
@@ -233,40 +344,40 @@ function clean_files_with_free_trial(id) {
     });
 }
 
-function clean_file(id) {
-    $("#alert-info").html('<div class="alert">' +
-        'Processing Files! Please DO NOT close your browser, this may take several minutes' +
-        '</div>')
-    $("#clean-btn" + id).html("Loading...");
-    $("#clean-btn" + id).prop("disabled", true);
-    $.ajax({
-        method: "get",
-        url: APP_URL + "/clean-file/" + id,
-        success: function (response) {
-            $("#clean-btn" + id).html("Clean File(s)");
-            $("#clean-btn" + id).prop("disabled", false);
-            console.log(response);
-            Swal.fire({
-                title: 'Success!',
-                text: response.msg,
-                icon: 'success',
-                showCancelButton: false,
-            }).then((result) => {
-                window.location = APP_URL + '/account';
-            })
-        },
-        error: function (error) {
-            $("#clean-btn" + id).html("Loading...");
-            $("#clean-btn" + id).prop("disabled", true);
-            console.log(error);
-            Swal.fire({
-                title: "Error",
-                text: error.responseJSON.msg,
-                icon: "error",
-            });
-        }
-    });
-}
+// function clean_file(id) {
+//     $("#alert-info").html('<div class="alert">' +
+//         'Processing Files! Please DO NOT close your browser, this may take several minutes' +
+//         '</div>')
+//     $("#clean-btn" + id).html("Loading...");
+//     $("#clean-btn" + id).prop("disabled", true);
+//     $.ajax({
+//         method: "get",
+//         url: APP_URL + "/clean-file/" + id,
+//         success: function (response) {
+//             $("#clean-btn" + id).html("Clean File(s)");
+//             $("#clean-btn" + id).prop("disabled", false);
+//             console.log(response);
+//             Swal.fire({
+//                 title: 'Success!',
+//                 text: response.msg,
+//                 icon: 'success',
+//                 showCancelButton: false,
+//             }).then((result) => {
+//                 window.location = APP_URL + '/account';
+//             })
+//         },
+//         error: function (error) {
+//             $("#clean-btn" + id).html("Loading...");
+//             $("#clean-btn" + id).prop("disabled", true);
+//             console.log(error);
+//             Swal.fire({
+//                 title: "Error",
+//                 text: error.responseJSON.msg,
+//                 icon: "error",
+//             });
+//         }
+//     });
+// }
 
 function clean_multiple_files_with_free_trial() {
 
@@ -316,53 +427,53 @@ function clean_multiple_files_with_free_trial() {
     }
 }
 
-function clean_multiple_files() {
+// function clean_multiple_files() {
 
-    var ids = [];
-    $('input.testCheckbox[type="checkbox"]:checked').each(function () {
-        if ($(this).attr("idd") > 0) {
-            ids.push($(this).attr("idd"));
-        }
-    });
-    if (ids.length > 0) {
-        $("#alert-info").append('<div class="alert">' +
-            'Processing Files! Please DO NOT close your browser, this may take several minutes' +
-            '</div>')
-        $("#clean-btn").html("Loading...");
-        $("#clean-btn").prop("disabled", true);
-        $.ajax({
-            method: "post",
-            url: APP_URL + "/clean-multiple-file",
-            data: {
-                "_token": CSRF_TOKEN,
-                "id": ids
-            },
-            success: function (response) {
-                $("#clean-btn").html("Clean File(s)");
-                $("#clean-btn").prop("disabled", false);
-                console.log(response);
-                Swal.fire({
-                    title: 'Success!',
-                    text: response.msg,
-                    icon: 'success',
-                    showCancelButton: false,
-                }).then((result) => {
-                    window.location = APP_URL + '/account';
-                })
-            },
-            error: function (error) {
-                $("#clean-btn").html("Loading...");
-                $("#clean-btn").prop("disabled", true);
-                console.log(error);
-                Swal.fire({
-                    title: "Error",
-                    text: error.responseJSON.msg,
-                    icon: "error",
-                });
-            }
-        });
-    }
-}
+//     var ids = [];
+//     $('input.testCheckbox[type="checkbox"]:checked').each(function () {
+//         if ($(this).attr("idd") > 0) {
+//             ids.push($(this).attr("idd"));
+//         }
+//     });
+//     if (ids.length > 0) {
+//         $("#alert-info").append('<div class="alert">' +
+//             'Processing Files! Please DO NOT close your browser, this may take several minutes' +
+//             '</div>')
+//         $("#clean-btn").html("Loading...");
+//         $("#clean-btn").prop("disabled", true);
+//         $.ajax({
+//             method: "post",
+//             url: APP_URL + "/clean-multiple-file",
+//             data: {
+//                 "_token": CSRF_TOKEN,
+//                 "id": ids
+//             },
+//             success: function (response) {
+//                 $("#clean-btn").html("Clean File(s)");
+//                 $("#clean-btn").prop("disabled", false);
+//                 console.log(response);
+//                 Swal.fire({
+//                     title: 'Success!',
+//                     text: response.msg,
+//                     icon: 'success',
+//                     showCancelButton: false,
+//                 }).then((result) => {
+//                     window.location = APP_URL + '/account';
+//                 })
+//             },
+//             error: function (error) {
+//                 $("#clean-btn").html("Loading...");
+//                 $("#clean-btn").prop("disabled", true);
+//                 console.log(error);
+//                 Swal.fire({
+//                     title: "Error",
+//                     text: error.responseJSON.msg,
+//                     icon: "error",
+//                 });
+//             }
+//         });
+//     }
+// }
 
 function redirectUrl(url) {
     window.location = url;
@@ -426,7 +537,7 @@ function fileFilter(value) {
 
                             $("#audio-list-datatable").append('<tr class="border_bottom">\n' +
                                 '                    <td style="cursor:pointer;" title="' + data[i].file_name + '">' + $new_array.substring(0, 15) + ($new_array.length > 15 ? "..." : "") + '</td>\n' +
-                                '                    <td><span id="duration' + aud_id + '">' + data[i].duration + '</span></td>\n' +
+                                '                    <td><span id="duration' + aud_id + '">' + data[i].duration_in_min + '</span></td>\n' +
                                 '                    <td>' + data[i].created + '</td>\n' +
                                 '                    <td><input type="hidden" id="duration_in_sec' + aud_id + '" class="durValue" value="' + data[i].duration_in_sec + '"/>' +
                                 '                    <audio id="audio' + aud_id + '" controls="" style="vertical-align: middle"' +
@@ -435,7 +546,7 @@ function fileFilter(value) {
                                 '                        Your browser does not support the audio element.' +
                                 '                    </audio></td>\n' +
                                 '                    <td>' + cleanText + '</td>\n' +
-                                '                    <td style="width: 5px"><input onchange="checkboxCount();" class="testCheckbox" link="' + dlink + '" idd="' + idd + '" type="checkbox"> </td>\n' +
+                                '                    <td style="width: 5px"><input onchange="checkboxCount();" class="testCheckbox" link="' + dlink + '" idd="' + data[i].id + '" type="checkbox"> </td>\n' +
                                 '                </tr>');
 
                         }
@@ -673,7 +784,9 @@ function getDuration1(path, aud_id) {
         var per_sec_cost = 1 / 60;
         total_cost = per_sec_cost * total_duration;
         $("#total-duration").html(total_min + ' min ' + total_sec + ' sec')
+        
         $("#total-cost").html('$' + total_cost.toFixed(2))
+        $("#charge-value").val(total_cost.toFixed(2));
 
         total_cost = total_cost.toFixed(2);
         $("#paypal_total_cost").val(total_cost)
@@ -715,7 +828,7 @@ function getTotalDuration() {
 
     $("#total-duration").html(minutes + ' min ' + seconds + ' sec')
     $("#total-cost").html('$' + total_cost.toFixed(2))
-
+  
 
     total_cost = total_cost.toFixed(2);
     $("#paypal_total_cost").val(total_cost)

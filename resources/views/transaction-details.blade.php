@@ -27,7 +27,10 @@
                     @if(Auth::user()->trial_expiry_date>time())
                         <span>($0 per minute)</span>
                     @else
-                        <span id="total-cost"></span>($1 per minute) </b>
+                    <?php
+                        $const_settings = DB::table('constant_settings')->where('id',6)->first();
+                    ?>
+                        <span id="total-cost"></span>(${{ $const_settings->value }}per minute) </b>
                 @endif
             </div>
         </div>
